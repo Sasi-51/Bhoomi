@@ -27,22 +27,66 @@ const activityRoutes = require('./routes/activity');
 const { attachSockets } = require('./sockets');
 
 if (!process.env.JWT_SECRET) {
-  console.warn('[bhoomi] WARNING: JWT_SECRET is not set. Copy .env.example to .env before running in production.');
+  console.warn(
+    '[bhoomi] WARNING: JWT_SECRET is not set.'
+  );
 }
 
 const app = express();
 const server = http.createServer(app);
 
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
+/*
+|--------------------------------------------------------------------------
+| FRONTEND ORIGIN
+|--------------------------------------------------------------------------
+*/
+
+const CLIENT_ORIGIN =
+  process.env.CLIENT_ORIGIN ||
+  'http://localhost:5173';
+
+const allowedOrigins = CLIENT_ORIGIN
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
+/*
+|--------------------------------------------------------------------------
+| SOCKET.IO
+|--------------------------------------------------------------------------
+*/
 
 const io = new Server(server, {
-  cors: { origin: CLIENT_ORIGIN, methods: ['GET', 'POST'] }
+  cors: {
+    origin: allowedOrigins,
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
 });
+
 app.set('io', io);
 
-app.use(helmet());
-app.use(cors({ origin: CLIENT_ORIGIN }));
-app.use(express.json());
+/*
+|--------------------------------------------------------------------------
+| MIDDLEWARE
+|--------------------------------------------------------------------------
+*/
+
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false
+  })
+);
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true
+  })
+);
+
+app.use(express.json({ limit: '10mb' }));
+
 app.use(
   rateLimit({
     windowMs: 60 * 1000,
@@ -52,7 +96,25 @@ app.use(
   })
 );
 
-app.get('/api/health', (req, res) => res.json({ ok: true, service: 'bhoomi-server', time: Date.now() }));
+/*
+|--------------------------------------------------------------------------
+| HEALTH CHECK
+|--------------------------------------------------------------------------
+*/
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    ok: true,
+    service: 'bhoomi-server',
+    time: Date.now()
+  });
+});
+
+/*
+|--------------------------------------------------------------------------
+| API ROUTES
+|--------------------------------------------------------------------------
+*/
 
 app.use('/api/auth', authRoutes);
 app.use('/api/listings', listingsRoutes);
@@ -72,17 +134,55 @@ app.use('/api/demands', demandsRoutes);
 app.use('/api/disputes', disputesRoutes);
 app.use('/api/activity', activityRoutes);
 
-app.use((req, res) => res.status(404).json({ error: 'Not found' }));
+/*
+|--------------------------------------------------------------------------
+| 404
+|--------------------------------------------------------------------------
+*/
+
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Not found'
+  });
+});
+
+/*
+|--------------------------------------------------------------------------
+| ERROR HANDLER
+|--------------------------------------------------------------------------
+*/
+
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ error: 'Internal server error' });
+  console.error('[bhoomi]', err);
+
+  res.status(500).json({
+    error: 'Internal server error'
+  });
 });
+
+/*
+|--------------------------------------------------------------------------
+| SOCKETS
+|--------------------------------------------------------------------------
+*/
 
 attachSockets(io);
 
+/*
+|--------------------------------------------------------------------------
+| SERVER
+|--------------------------------------------------------------------------
+*/
+
 const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => {
-  console.log(`BHOOMI server listening on http://localhost:${PORT}`);
-  console.log(`Accepting client requests from ${CLIENT_ORIGIN}`);
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(
+    `BHOOMI server listening on port ${PORT}`
+  );
+
+  console.log(
+    `Accepting client requests from ${allowedOrigins.join(', ')}`
+  );
 });
