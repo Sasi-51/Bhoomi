@@ -1,10 +1,15 @@
 import { io } from 'socket.io-client';
+import { API_BASE } from './api';
 
-const SOCKET_URL = 'https://bhoomi-7e7h.onrender.com';
+let socket;
 
-const socket = io(SOCKET_URL, {
-  transports: ['websocket', 'polling'],
-  autoConnect: true
-});
+export function getSocket() {
+  if (!socket) {
+    socket = io(API_BASE, {
+      autoConnect: true,
+      transports: ['websocket', 'polling']
+    });
+  }
 
-export default socket;
+  return socket;
+}
