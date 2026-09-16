@@ -1,13 +1,11 @@
 import axios from 'axios';
 
-const API_BASE = 'https://bhoomi-7e7h.onrender.com';
+export const API_BASE =
+  import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 const api = axios.create({
   baseURL: `${API_BASE}/api`,
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  timeout: 30000
+  timeout: 15000
 });
 
 api.interceptors.request.use((config) => {
