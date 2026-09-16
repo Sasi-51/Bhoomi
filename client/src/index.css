@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  background-color: #EEF1E7;
+  color: #1A241F;
+}
+
+::selection {
+  background: #E2A33B;
+  color: #16302A;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #D8DCCD;
+  border-radius: 4px;
+}
+
+@keyframes tickerScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-ticker {
+  animation: tickerScroll 30s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-ticker { animation: none; }
+}
